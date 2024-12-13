@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js';
-
+import { getFirestore, doc, setDoc, query, where, getDocs, collection } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -20,65 +20,126 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Get Firebase Authentication instance
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 
 // Get reference to forms
 const signupForm = document.getElementById('signup-form');
 const loginForm = document.getElementById('login-form');
 
-// Handle Sign-Up Form Submission
+if(signupForm){
+  // Handle Sign-Up Form Submission
 signupForm.addEventListener('submit', (e) => {
+
   e.preventDefault(); // Prevent the form from refreshing the page
 
   // Get values from form inputs
   const email = document.getElementById('signup-email').value;
   const password = document.getElementById('signup-password').value;
+  const userName = document.getElementById('signup-username').value;
 
   // Create a new user with email and password
   createUserWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      // Signed in successfully
-      const user = userCredential.user;
-      console.log('User created:', user);
-      alert('Account created successfully!');
-    })
-    .catch((error) => {
-      // Handle errors
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      console.error('Error creating user:', errorCode, errorMessage);
-      alert('Error: ' + errorMessage);
+  .then(async (userCredential) => {
+    const user = userCredential.user;
+    console.log('test');
+    // Store the username in Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      username: userName,
+      email: email,
+      // You can add more user details here
     });
-    signupForm.reset(); 
+
+    console.log('User created and username stored:', user);
+    alert('Account created successfully!');
+    
+    // Clear the form
+    signupForm.reset();
+
+  })
+  .catch((error) => {
+    const errorCode = error.code;
+    const errorMessage = error.message;
+    console.error('Error creating user:', errorCode, errorMessage);
+    alert('Error: ' + errorMessage);
+  })
 });
+}
 
 
 
-// Handle Log-In Form Submission
+if(loginForm){
+  // Handle Log-In Form Submission
 loginForm.addEventListener('submit', (e) => {
+
   e.preventDefault(); // Prevent the form from refreshing the page
 
   // Get values from form inputs
-  const email = document.getElementById('login-email').value;
+  const emailOrUsername = document.getElementById('login-emause').value;
   const password = document.getElementById('login-password').value;
 
-  // Sign in the user with email and password
-  signInWithEmailAndPassword(auth, email, password)
-    .then((userCredential) => {
-      // Signed in successfully
-      const user = userCredential.user;
-      console.log('User signed in:', user);
-      alert('Logged in successfully!');
-    })
-    .catch((error) => {
-      // Handle errors
-      const errorCode = error.code;
-      const errorMessage = error.message;
-      console.error('Error logging in user:', errorCode, errorMessage);
-      alert('Error: ' + errorMessage);
-    });
-    loginForm.reset();
+  let emaoruse = emailOrUsername;
+
+  if(!emaoruse.includes('@')){
+    // Its a username
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('username', '==', emailOrUsername));
+    
+    getDocs(q).then(
+      async(querySnapshot)=>{
+        
+        if(!querySnapshot.empty){
+          // User found
+          const userDoc = querySnapshot.docs[0]; // get user document
+          emaoruse = userDoc.data().email; // use email on user document
+          
+          //Auth part using fetched email
+          signInWithEmailAndPassword(auth, emaoruse, password).then(
+            async(userCredential) => {
+              const user = userCredential.user;
+              console.log('User logged in successfully:', user);
+              alert('Logged in successfully!');
+
+              // redirect?...
+            }).catch((error) => {
+              const errorCode = error.code;
+              const errorMessage = error.message;
+              console.error('Error signing in:', errorCode, errorMessage);
+              alert('Error: ' + errorMessage);
+            });
+        
+
+        }else{
+          console.log("No user found with that username");
+          alert("Error: Username not found.");
+        }
+      }).catch((error) => {
+        console.error("Error fetching username:", error);
+        alert("Error fetching username: " + error.message);
+      });
+  }else {
+    // It's an email, so directly try to sign in
+    signInWithEmailAndPassword(auth, emaoruse, password)
+      .then(async (userCredential) => {
+        const user = userCredential.user;
+        
+        console.log('User logged in successfully:', user);
+        alert('Logged in successfully!');
+        
+        // Redirect to another page or dashboard (optional)
+        // window.location.href = 'dashboard.html'; // Example
+
+      })
+      .catch((error) => {
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        console.error('Error signing in:', errorCode, errorMessage);
+        alert('Error: ' + errorMessage);
+      });
+  }
+
+  
+  loginForm.reset();
 });
+}
