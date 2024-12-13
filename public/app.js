@@ -28,44 +28,52 @@ const db = getFirestore(app);
 const signupForm = document.getElementById('signup-form');
 const loginForm = document.getElementById('login-form');
 
-if(signupForm){
+if (signupForm) {
   // Handle Sign-Up Form Submission
-signupForm.addEventListener('submit', (e) => {
+  signupForm.addEventListener("submit", async (e) => {
+    e.preventDefault(); // Prevent the form from refreshing the page
 
-  e.preventDefault(); // Prevent the form from refreshing the page
+    // Get values from form inputs
+    const email = document.getElementById("signup-email").value;
+    const password = document.getElementById("signup-password").value;
+    const userName = document.getElementById("signup-username").value;
 
-  // Get values from form inputs
-  const email = document.getElementById('signup-email').value;
-  const password = document.getElementById('signup-password').value;
-  const userName = document.getElementById('signup-username').value;
+    try {
+      // Check if the username already exists
+      const usersRef = collection(db, "users");
+      const usernameQuery = query(usersRef, where("username", "==", userName));
+      const querySnapshot = await getDocs(usernameQuery);
 
-  // Create a new user with email and password
-  createUserWithEmailAndPassword(auth, email, password)
-  .then(async (userCredential) => {
-    const user = userCredential.user;
-    console.log('test');
-    // Store the username in Firestore
-    await setDoc(doc(db, "users", user.uid), {
-      username: userName,
-      email: email,
-      // You can add more user details here
-    });
+      if (!querySnapshot.empty) {
+        alert("Username already exists. Please choose a different username.");
+        return;
+      }
 
-    console.log('User created and username stored:', user);
-    alert('Account created successfully!');
-    
-    // Clear the form
-    signupForm.reset();
+      // Create a new user with email and password
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-  })
-  .catch((error) => {
-    const errorCode = error.code;
-    const errorMessage = error.message;
-    console.error('Error creating user:', errorCode, errorMessage);
-    alert('Error: ' + errorMessage);
-  })
-});
+      // Store the username in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        username: userName,
+        email: email,
+        // Additional user details can go here
+      });
+
+      console.log("User created and username stored:", user);
+      alert("Account created successfully!");
+
+      // Clear the form
+      signupForm.reset();
+    } catch (error) {
+      const errorCode = error.code;
+      const errorMessage = error.message;
+      console.error("Error creating user:", errorCode, errorMessage);
+      alert("Error: " + errorMessage);
+    }
+  });
 }
+
 
 
 
