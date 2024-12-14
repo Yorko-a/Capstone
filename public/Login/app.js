@@ -16,11 +16,6 @@ import {
   collection,
 } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyD5s2Rkq1NwkXrs-Xjk9AVxP94bcWO6fe8",
   authDomain: "signuploginapp-e51b2.firebaseapp.com",
@@ -74,7 +69,8 @@ if (signupForm) {
         console.error('Error email verification: ', error);
       })
 
-      // Store the username in Firestore
+      if(user.emailVerified){
+        // Store the username in Firestore
       await setDoc(doc(db, "users", user.uid), {
         username: userName,
         email: email,
@@ -83,6 +79,10 @@ if (signupForm) {
 
       console.log("User created and username stored:", user);
       alert("Account created successfully!");
+      }else{
+        alert("Please verify your email. Check your inbox for the verification link.");
+        auth.signOut();
+      }
 
       // Clear the form
       signupForm.reset();
@@ -149,8 +149,8 @@ loginForm.addEventListener('submit', (e) => {
         
 
         }else{
-          console.log("No user found with that username");
-          alert("Error: Username not found.");
+          console.log("No user registered with that username");
+          alert("Error: Username not verified.");
         }
       }).catch((error) => {
         console.error("Error fetching username:", error);
